@@ -299,7 +299,7 @@ void freeRegion(void *r) {
    in r + s, then just adjust sizes of r & s.
 */
 void *resizeRegion(void *r, size_t newSize) {
-  int oldSize;
+  size_t oldSize;
   if (r != (void *)0)		/* old region existed */
     oldSize = computeUsableSpace(regionToPrefix(r));
   else
@@ -307,6 +307,45 @@ void *resizeRegion(void *r, size_t newSize) {
   if (oldSize >= newSize)	/* old region is big enough */
     return r;
   else {			/* allocate new region & copy old data */
+    BlockPrefix_t *currentPrefix = regionToPrefix(r);                              //store region as blocks
+    BlockPrefix_t *nextPref = computeNextPrefixAddr(currentPrefix);                    //get the following prefix
+    size_t nextSize =computeUsableSpace(nextPref);                                //get size of nextBlock
+    if(!nextPref ->allocated && nextPref){                  
+      size_t mergedSize = nextSize +(computeUsableSpace(currentPrefix));           //gegt size of current and next block
+      if(mergedSize >= newSize){
+	size_t availSize = align8((newSize -(computeUsableSpace(currentPrefix)))); //get size needed
+	if(availSize >=(mergedSize + 8)){                                          //split block 
+	  void *freeSilverStart =( void *) nextPref + mergedSize;
+	  void *freeSilverEnd = computeNextPrefixAddr(nextPref);
+	  makeFreeBlock(freeSilverStart, freeSilverEnd -freeSilverStart);
+	  makeFreeBlock(nextPref, freeSilverStart - (void *) nextPref);
+	}
+	currentPrefix ->allocated =0;               //Change status to unallocated
+	currentPrefix =coalescePrev(nextPref);
+	currentPrefix ->allocated =1;                //change status to allocated
+	return prefixToRegion(currentPrefix);
+      }
+      BlockPrefix_t *prevPref = getPrevPrefix(currentPrefix);                     //get previous prefix
+      size_t prevSize =computeUsableSpace(prevPref);                              //get previous prefix size
+      if(!prevPref ->allocated && prevPref){                  
+      size_t mergedSize2 = prevSize +(computeUsableSpace(currentPrefix));           //gegt size of current and next block
+      if(mergedSize2 >= newSize){
+	BlockPrefix_t *coalesceNewBlock =regionToPrefix(makeFreeBlock(prefixToRegion(prevPref),align8(newSize -oldSize)));
+	currentPrefix ->allocated =0;                                              //change status to unalocated
+	coalescePrev(currentPrefix);
+	currentPrefix ->allocated =1;
+	return (void *)coalesceNewBlock;
+      }
+      if(!nextPref ->allocated && !prevPref ->allocated && prevPref && nextPref){
+	size_t mergedSize3 = nextSize+prevSize +(computeUsableSpace(currentPrefix));           //gegt size of current and next block
+	if(mergedSize >= newSize){
+	  BlockPrefix_t *prevBlock;
+	  BlockPrefix_t *nextBlock;
+
+	  
+	}
+      }
+      }}
     char *o = (char *)r;	/* treat both regions as char* */
     char *n = (char *)firstFitAllocRegion(newSize); 
     int i;
