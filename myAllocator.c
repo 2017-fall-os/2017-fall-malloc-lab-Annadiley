@@ -336,15 +336,7 @@ void *resizeRegion(void *r, size_t newSize) {
 	currentPrefix ->allocated =1;
 	return (void *)coalesceNewBlock;
       }
-      if(!nextPref ->allocated && !prevPref ->allocated && prevPref && nextPref){
-	size_t mergedSize3 = nextSize+prevSize +(computeUsableSpace(currentPrefix));           //gegt size of current and next block
-	if(mergedSize >= newSize){
-	  BlockPrefix_t *prevBlock;
-	  BlockPrefix_t *nextBlock;
-
-	  
-	}
-      }
+     
       }}
     char *o = (char *)r;	/* treat both regions as char* */
     char *n = (char *)firstFitAllocRegion(newSize); 

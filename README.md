@@ -26,4 +26,6 @@ To clean:
 The cygwin runtime uses malloc() and brk() extensively.  It is
 interesting to compare the output of test1 & myAllocatorTest1.  All
 those extra allocated regions are being used by cygwin's libraries!
-
+# Changes Made By Me:
+A new function, findBestFit and bestFitAllocRegion where implemented to find the block that best fits the amount of memory that is being requestedd.
+ResizeREgion was also modified so that it could adjust the size of r & s if the succesor of these two is free and there is suficient space in r+s.
