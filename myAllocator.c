@@ -191,6 +191,32 @@ BlockPrefix_t *findFirstFit(size_t s) {	/* find first block with usable space > 
     return growArena(s);
 }
 
+//implement bestFit model, ffinding the best fit in the current arena
+BlockPrefix_t *findBestFit(size_t s){
+  BlockPrefix_t*p = arenaBegin;                           //Used to find the best bock and traverse the current one
+  BlockPrefix_t *bestFit =findFirstFit(s);                //find a first fit to compare it
+  size_t fitSize =computeUsableSpace(bestFit);            //Keeps track of size of block
+   
+  while(p){
+    size_t availSize = computeUsableSpace(p);             //compute space of current p
+    if(!p->allocated){
+      if(availSize ==s){                                  //exact perfect fit was found, return inmediatly
+	return bestFit;                            
+      }
+      if (availSize>= s && availSize <=fitSize){          //if the size is bigger than s and the curret p size is less than fitSize
+      bestFit =p;
+      fitSize = availSize;
+      }
+    }
+    p=getNextPrefix(p);
+  }
+  if(bestFit){                                           //If a best fit was found return it.
+    return bestFit;
+  }
+  return growArena (s);
+
+}
+
 /* conversion between blocks & regions (offset of prefixSize */
 
 BlockPrefix_t *regionToPrefix(void *r) {
@@ -233,6 +259,28 @@ void *firstFitAllocRegion(size_t s) {
   
 }
 
+void *bestFitAllocRegion(size_t s) {
+  size_t asize = align8(s);
+  BlockPrefix_t *p;
+  if (arenaBegin == 0)		/* arena uninitialized? */
+    initializeArena();
+  p = findBestFit(s);		/* find a block */
+  if (p) {			/* found a block */
+    size_t availSize = computeUsableSpace(p);
+    if (availSize >= (asize + prefixSize + suffixSize + 8)) { /* split block? */
+      void *freeSliverStart = (void *)p + prefixSize + suffixSize + asize;
+      void *freeSliverEnd = computeNextPrefixAddr(p);
+      makeFreeBlock(freeSliverStart, freeSliverEnd - freeSliverStart);
+      makeFreeBlock(p, freeSliverStart - (void *)p); /* piece being allocated */
+    }
+    p->allocated = 1;		/* mark as allocated */
+    return prefixToRegion(p);	/* convert to *region */
+  } else {			/* failed */
+    return (void *)0;
+  }
+  
+}
+
 void freeRegion(void *r) {
     if (r != 0) {
 	BlockPrefix_t *p = regionToPrefix(r); /* convert to block */
@@ -240,7 +288,6 @@ void freeRegion(void *r) {
 	coalesce(p);
     }
 }
-
 
 /*
   like realloc(r, newSize), resizeRegion will return a new region of size
